@@ -16,6 +16,15 @@ async function startServer() {
 
   app.use(express.json({ limit: '10mb' }));
 
+  // CORS — allow Cloudflare Pages frontend
+  app.use((req, res, next) => {
+    res.header("Access-Control-Allow-Origin", "*");
+    res.header("Access-Control-Allow-Headers", "Content-Type");
+    res.header("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+    if (req.method === "OPTIONS") return res.sendStatus(204);
+    next();
+  });
+
   // GCS Setup
   let storage: Storage | null = null;
   const bucketName = process.env.GCS_BUCKET_NAME;

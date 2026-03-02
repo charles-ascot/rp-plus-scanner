@@ -21,6 +21,7 @@ import Markdown from 'react-markdown';
 
 // Initialize Gemini
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || '' });
+const API_BASE = process.env.API_BASE_URL || '';
 
 type Screen = 'home' | 'camera' | 'results' | 'history' | 'browser';
 
@@ -95,7 +96,7 @@ export default function App() {
   const uploadToGCS = async (result: OCRResult) => {
     setUploadStatus('uploading');
     try {
-      const response = await fetch('/api/upload-ocr', {
+      const response = await fetch(`${API_BASE}/api/upload-ocr`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
