@@ -329,7 +329,7 @@ export default function App() {
             <div className="flex-1 overflow-hidden">
               {browserLoaded && browserUrl ? (
                 <iframe
-                  src={browserUrl}
+                  src={`/api/proxy?url=${encodeURIComponent(browserUrl)}`}
                   className="w-full h-full border-0"
                   sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
                   title="Browser"
