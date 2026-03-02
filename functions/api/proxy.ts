@@ -8,6 +8,7 @@ export const onRequest: PagesFunction = async (context) => {
 
   try {
     const targetUrl = new URL(target);
+    const origin = targetUrl.origin;
 
     const response = await fetch(targetUrl.toString(), {
       headers: {
@@ -27,6 +28,28 @@ export const onRequest: PagesFunction = async (context) => {
 
     // Allow framing
     headers.set("Access-Control-Allow-Origin", "*");
+
+    const contentType = headers.get("Content-Type") || "";
+
+    // For HTML responses, inject <base> tag so relative URLs
+    // (CSS, JS, images) resolve against the original domain
+    if (contentType.includes("text/html")) {
+      let html = await response.text();
+
+      const baseTag = `<base href="${origin}/">`;
+      if (html.includes("<head>")) {
+        html = html.replace("<head>", `<head>${baseTag}`);
+      } else if (html.includes("<HEAD>")) {
+        html = html.replace("<HEAD>", `<HEAD>${baseTag}`);
+      } else {
+        html = baseTag + html;
+      }
+
+      return new Response(html, {
+        status: response.status,
+        headers,
+      });
+    }
 
     return new Response(response.body, {
       status: response.status,
