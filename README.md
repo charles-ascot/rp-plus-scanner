@@ -3,7 +3,7 @@
 </div>
 
 # Run and deploy your AI Studio app
-
+.
 This contains everything you need to run your app locally.
 
 View your app in AI Studio: https://ai.studio/apps/96f5d375-c5fa-4f2f-ae9a-26c440c1c5c9
