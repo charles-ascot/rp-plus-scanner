@@ -1,0 +1,7 @@
+{
+  "name": "OCR Mobile Link",
+  "description": "A mobile-styled OCR application that extracts text from images using Gemini and stores the results in Google Cloud Storage.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}
