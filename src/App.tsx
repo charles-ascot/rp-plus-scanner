@@ -40,7 +40,9 @@ export default function App() {
   const [currentResult, setCurrentResult] = useState<OCRResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [uploadStatus, setUploadStatus] = useState<'idle' | 'uploading' | 'success' | 'error'>('idle');
-  
+  const [browserUrl, setBrowserUrl] = useState('');
+  const [browserLoaded, setBrowserLoaded] = useState(false);
+
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -298,26 +300,51 @@ export default function App() {
       case 'browser':
         return (
           <div className="flex flex-col h-full bg-slate-100">
-            <div className="p-4 bg-white border-b border-slate-200 flex items-center space-x-2">
-              <button onClick={() => setCurrentScreen('home')} className="text-indigo-600 font-semibold">Back</button>
-              <div className="flex-1 bg-slate-100 rounded-full px-4 py-1.5 flex items-center space-x-2">
-                <Globe className="w-3 h-3 text-slate-400" />
-                <span className="text-xs text-slate-500 truncate">https://google.com</span>
-              </div>
+            <div className="p-3 bg-white border-b border-slate-200 flex items-center space-x-2">
+              <button onClick={() => { setCurrentScreen('home'); setBrowserUrl(''); setBrowserLoaded(false); }} className="text-indigo-600 font-semibold text-sm">Back</button>
+              <form
+                className="flex-1 flex items-center bg-slate-100 rounded-full overflow-hidden"
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  if (browserUrl.trim()) {
+                    const url = browserUrl.trim().startsWith('http') ? browserUrl.trim() : `https://${browserUrl.trim()}`;
+                    setBrowserUrl(url);
+                    setBrowserLoaded(true);
+                  }
+                }}
+              >
+                <div className="pl-3">
+                  <Globe className="w-3 h-3 text-slate-400" />
+                </div>
+                <input
+                  type="text"
+                  value={browserUrl}
+                  onChange={(e) => setBrowserUrl(e.target.value)}
+                  placeholder="Enter URL..."
+                  className="flex-1 bg-transparent px-2 py-1.5 text-xs text-slate-700 outline-none placeholder:text-slate-400"
+                />
+                <button type="submit" className="px-3 py-1.5 text-xs font-semibold text-indigo-600">Go</button>
+              </form>
             </div>
-            <div className="flex-1 flex items-center justify-center p-8 text-center">
-              <div className="space-y-4">
-                <div className="w-16 h-16 bg-white rounded-2xl shadow-sm flex items-center justify-center mx-auto">
-                  <Globe className="w-8 h-8 text-indigo-600" />
+            <div className="flex-1 overflow-hidden">
+              {browserLoaded && browserUrl ? (
+                <iframe
+                  src={browserUrl}
+                  className="w-full h-full border-0"
+                  sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
+                  title="Browser"
+                />
+              ) : (
+                <div className="flex-1 flex items-center justify-center h-full p-8 text-center">
+                  <div className="space-y-4">
+                    <div className="w-16 h-16 bg-white rounded-2xl shadow-sm flex items-center justify-center mx-auto">
+                      <Globe className="w-8 h-8 text-indigo-600" />
+                    </div>
+                    <h3 className="font-bold text-slate-900">Web Browser</h3>
+                    <p className="text-sm text-slate-500">Enter a URL above to navigate</p>
+                  </div>
                 </div>
-                <h3 className="font-bold text-slate-900">Web Browser</h3>
-                <p className="text-sm text-slate-500">The virtual device is connected to the internet.</p>
-                <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-200 text-left">
-                  <p className="text-xs font-mono text-slate-600">Status: Connected</p>
-                  <p className="text-xs font-mono text-slate-600">IP: 192.168.1.45</p>
-                  <p className="text-xs font-mono text-slate-600">Region: Europe-West</p>
-                </div>
-              </div>
+              )}
             </div>
           </div>
         );
