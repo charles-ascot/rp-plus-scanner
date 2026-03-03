@@ -41,9 +41,7 @@ export default function App() {
   const [error, setError] = useState<string | null>(null);
   const [uploadStatus, setUploadStatus] = useState<'idle' | 'uploading' | 'success' | 'error'>('idle');
   const [browserUrl, setBrowserUrl] = useState('');
-  const [screenshotSrc, setScreenshotSrc] = useState<string | null>(null);
-  const [browserLoading, setBrowserLoading] = useState(false);
-  const [browserError, setBrowserError] = useState<string | null>(null);
+  const [browserLoaded, setBrowserLoaded] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -299,31 +297,11 @@ export default function App() {
           </div>
         );
 
-      case 'browser': {
-        const fetchScreenshot = async (url: string) => {
-          setBrowserLoading(true);
-          setBrowserError(null);
-          setScreenshotSrc(null);
-          try {
-            const res = await fetch(`/api/proxy?url=${encodeURIComponent(url)}`);
-            if (!res.ok) {
-              const errData = await res.json().catch(() => ({ error: 'Screenshot failed' }));
-              throw new Error((errData as any).error || 'Screenshot failed');
-            }
-            const blob = await res.blob();
-            const objectUrl = URL.createObjectURL(blob);
-            setScreenshotSrc(objectUrl);
-          } catch (err: any) {
-            setBrowserError(err.message);
-          } finally {
-            setBrowserLoading(false);
-          }
-        };
-
+      case 'browser':
         return (
           <div className="flex flex-col h-full bg-slate-100">
             <div className="p-3 bg-white border-b border-slate-200 flex items-center space-x-2">
-              <button onClick={() => { setCurrentScreen('home'); setBrowserUrl(''); setScreenshotSrc(null); setBrowserError(null); }} className="text-indigo-600 font-semibold text-sm">Back</button>
+              <button onClick={() => { setCurrentScreen('home'); setBrowserUrl(''); setBrowserLoaded(false); }} className="text-indigo-600 font-semibold text-sm">Back</button>
               <form
                 className="flex-1 flex items-center bg-slate-100 rounded-full overflow-hidden"
                 onSubmit={(e) => {
@@ -331,7 +309,7 @@ export default function App() {
                   if (browserUrl.trim()) {
                     const url = browserUrl.trim().startsWith('http') ? browserUrl.trim() : `https://${browserUrl.trim()}`;
                     setBrowserUrl(url);
-                    fetchScreenshot(url);
+                    setBrowserLoaded(true);
                   }
                 }}
               >
@@ -345,26 +323,17 @@ export default function App() {
                   placeholder="Enter URL..."
                   className="flex-1 bg-transparent px-2 py-1.5 text-xs text-slate-700 outline-none placeholder:text-slate-400"
                 />
-                <button type="submit" disabled={browserLoading} className="px-3 py-1.5 text-xs font-semibold text-indigo-600 disabled:opacity-50">
-                  {browserLoading ? '...' : 'Go'}
-                </button>
+                <button type="submit" className="px-3 py-1.5 text-xs font-semibold text-indigo-600">Go</button>
               </form>
             </div>
-            <div className="flex-1 overflow-auto">
-              {browserLoading ? (
-                <div className="flex flex-col items-center justify-center h-full space-y-4">
-                  <Loader2 className="w-10 h-10 text-indigo-600 animate-spin" />
-                  <p className="text-sm text-slate-500">Rendering page...</p>
-                </div>
-              ) : browserError ? (
-                <div className="flex flex-col items-center justify-center h-full p-6 text-center space-y-3">
-                  <AlertCircle className="w-10 h-10 text-red-400" />
-                  <p className="text-sm text-slate-700 font-semibold">Failed to load</p>
-                  <p className="text-xs text-slate-500">{browserError}</p>
-                  <button onClick={() => fetchScreenshot(browserUrl)} className="mt-2 px-4 py-1.5 bg-indigo-600 text-white text-xs rounded-full font-semibold">Retry</button>
-                </div>
-              ) : screenshotSrc ? (
-                <img src={screenshotSrc} alt="Page screenshot" className="w-full" />
+            <div className="flex-1 overflow-hidden">
+              {browserLoaded && browserUrl ? (
+                <iframe
+                  src={`/api/proxy?url=${encodeURIComponent(browserUrl)}`}
+                  className="w-full h-full border-0"
+                  sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
+                  title="Browser"
+                />
               ) : (
                 <div className="flex-1 flex items-center justify-center h-full p-8 text-center">
                   <div className="space-y-4">
@@ -379,7 +348,6 @@ export default function App() {
             </div>
           </div>
         );
-      }
     }
   };
 

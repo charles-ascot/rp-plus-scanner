@@ -1,108 +1,61 @@
-import puppeteer from "@cloudflare/puppeteer";
-
-interface Env {
-  BROWSER: Fetcher;
-  RP_USERNAME?: string;
-  RP_PASSWORD?: string;
-}
-
-export const onRequest: PagesFunction<Env> = async (context) => {
+export const onRequest: PagesFunction = async (context) => {
   const url = new URL(context.request.url);
   const target = url.searchParams.get("url");
 
   if (!target) {
-    return new Response(JSON.stringify({ error: "Missing url parameter" }), {
-      status: 400,
-      headers: { "Content-Type": "application/json" },
-    });
+    return new Response("Missing url parameter", { status: 400 });
   }
-
-  let browser: puppeteer.Browser | null = null;
 
   try {
     const targetUrl = new URL(target);
+    const origin = targetUrl.origin;
 
-    browser = await puppeteer.launch(context.env.BROWSER);
-    const page = await browser.newPage();
+    const response = await fetch(targetUrl.toString(), {
+      headers: {
+        "User-Agent": context.request.headers.get("User-Agent") || "",
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+        "Accept-Language": "en-US,en;q=0.5",
+      },
+      redirect: "follow",
+    });
 
-    // Mobile viewport to match the virtual device frame
-    await page.setViewport({ width: 380, height: 650, deviceScaleFactor: 2 });
-    await page.setUserAgent(
-      "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1"
-    );
+    const headers = new Headers(response.headers);
 
-    // If Racing Post credentials are available, log in first
-    const username = context.env.RP_USERNAME;
-    const password = context.env.RP_PASSWORD;
+    // Strip frame-blocking headers
+    headers.delete("X-Frame-Options");
+    headers.delete("Content-Security-Policy");
+    headers.delete("Content-Security-Policy-Report-Only");
 
-    if (username && password && targetUrl.hostname.includes("racingpost")) {
-      try {
-        await page.goto("https://www.racingpost.com/login", {
-          waitUntil: "networkidle0",
-          timeout: 15000,
-        });
+    // Allow framing
+    headers.set("Access-Control-Allow-Origin", "*");
 
-        // Try common login form selectors
-        const emailSelector =
-          'input[type="email"], input[name="email"], input[name="username"], input#email, input#username';
-        const passwordSelector =
-          'input[type="password"], input[name="password"], input#password';
+    const contentType = headers.get("Content-Type") || "";
 
-        await page.waitForSelector(emailSelector, { timeout: 5000 });
-        await page.type(emailSelector, username);
-        await page.type(passwordSelector, password);
+    // For HTML responses, inject <base> tag so relative URLs
+    // (CSS, JS, images) resolve against the original domain
+    if (contentType.includes("text/html")) {
+      let html = await response.text();
 
-        // Click submit and wait for navigation
-        const submitSelector =
-          'button[type="submit"], input[type="submit"]';
-        await Promise.all([
-          page.waitForNavigation({ waitUntil: "networkidle0", timeout: 15000 }),
-          page.click(submitSelector),
-        ]);
-
-        // Brief pause to ensure session cookies are set
-        await new Promise((r) => setTimeout(r, 1000));
-      } catch (loginErr) {
-        // Login failed — continue anyway, page may still load without auth
-        console.log("Login attempt failed, continuing:", loginErr);
+      const baseTag = `<base href="${origin}/">`;
+      if (html.includes("<head>")) {
+        html = html.replace("<head>", `<head>${baseTag}`);
+      } else if (html.includes("<HEAD>")) {
+        html = html.replace("<HEAD>", `<HEAD>${baseTag}`);
+      } else {
+        html = baseTag + html;
       }
+
+      return new Response(html, {
+        status: response.status,
+        headers,
+      });
     }
 
-    // Navigate to the target URL
-    await page.goto(targetUrl.toString(), {
-      waitUntil: "networkidle0",
-      timeout: 20000,
-    });
-
-    // Wait a moment for any lazy-loaded content
-    await new Promise((r) => setTimeout(r, 1500));
-
-    // Take screenshot
-    const screenshot = await page.screenshot({
-      type: "png",
-      fullPage: false,
-    });
-
-    await browser.close();
-
-    return new Response(screenshot, {
-      headers: {
-        "Content-Type": "image/png",
-        "Cache-Control": "public, max-age=30",
-        "Access-Control-Allow-Origin": "*",
-      },
+    return new Response(response.body, {
+      status: response.status,
+      headers,
     });
   } catch (err: any) {
-    if (browser) await browser.close().catch(() => {});
-    return new Response(
-      JSON.stringify({ error: `Screenshot failed: ${err.message}` }),
-      {
-        status: 502,
-        headers: {
-          "Content-Type": "application/json",
-          "Access-Control-Allow-Origin": "*",
-        },
-      }
-    );
+    return new Response(`Proxy error: ${err.message}`, { status: 502 });
   }
 };
