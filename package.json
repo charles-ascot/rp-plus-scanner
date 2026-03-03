@@ -12,6 +12,7 @@
     "lint": "tsc --noEmit"
   },
   "dependencies": {
+    "@cloudflare/puppeteer": "^1.0.6",
     "@google-cloud/storage": "^7.19.0",
     "@google/genai": "^1.29.0",
     "@tailwindcss/vite": "^4.1.14",
@@ -27,6 +28,7 @@
     "vite": "^6.2.0"
   },
   "devDependencies": {
+    "@cloudflare/workers-types": "^4.20260301.1",
     "@types/express": "^4.17.21",
     "@types/node": "^22.14.0",
     "autoprefixer": "^10.4.21",
